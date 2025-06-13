@@ -1,0 +1,39 @@
+body {
+  background: black;
+  color: #00ff00;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 20px;
+}
+
+#terminal {
+  white-space: pre-wrap;
+  margin-bottom: 10px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+input {
+  background: black;
+  color: #00ff00;
+  border: none;
+  font-family: inherit;
+  font-size: 1em;
+  outline: none;
+  width: 100%;
+}
+
+button {
+  background: #111;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1em;
+  padding: 5px 10px;
+  cursor: pointer;
+  margin-top: 10px;
+  width: 100%;
+}
+button:hover {
+  background: #00ff00;
+  color: black;
+}
