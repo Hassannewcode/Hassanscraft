@@ -1,39 +1,43 @@
-body {
-  background: black;
-  color: #00ff00;
-  font-family: 'Courier New', Courier, monospace;
-  padding: 20px;
+html, body {
+  margin: 0; padding: 0; overflow: hidden; height: 100%;
+  background: #313131;
+  font-family: Arial, sans-serif;
+  user-select: none;
 }
 
-#terminal {
-  white-space: pre-wrap;
-  margin-bottom: 10px;
-  max-height: 80vh;
-  overflow-y: auto;
+#gameCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+  cursor: crosshair;
 }
 
-input {
-  background: black;
-  color: #00ff00;
-  border: none;
-  font-family: inherit;
-  font-size: 1em;
-  outline: none;
-  width: 100%;
+#hotbar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  background: rgba(0,0,0,0.5);
+  padding: 8px 12px;
+  border-radius: 12px;
 }
 
-button {
-  background: #111;
-  color: #00ff00;
-  border: 1px solid #00ff00;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 1em;
-  padding: 5px 10px;
+.block {
+  padding: 6px 12px;
+  background: #666;
+  color: white;
+  font-size: 14px;
+  border-radius: 6px;
   cursor: pointer;
-  margin-top: 10px;
-  width: 100%;
+  user-select: none;
+  transition: background-color 0.2s;
 }
-button:hover {
-  background: #00ff00;
+
+.block.selected {
+  background: #ffd700;
   color: black;
+  font-weight: bold;
 }
