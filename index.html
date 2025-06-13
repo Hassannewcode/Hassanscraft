@@ -3,10 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Game with Ad Block & Cookies Allowed</title>
+<title>Eaglercraft 1.12.2 Clone</title>
 
 <style>
-  /* Hide ad containers by default to avoid flicker */
+  html, body, #gameCanvas {
+    margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden;
+    background-color: #000;
+  }
+  #gameCanvas {
+    display: block;
+  }
+  /* Hide ad containers */
   #eaglercraft_com_leaderboard_responsive_top,
   #eaglercraft_com_sticky_anchorad_responsive,
   #eaglercraft_com_side_rails_left,
@@ -17,70 +24,51 @@
 </style>
 
 <script>
-  // Stub googletag to block Google Ads loading
+  // Stub Google Ads (googletag) to disable ads but allow game scripts to run
   window.googletag = window.googletag || {};
   googletag.cmd = googletag.cmd || [];
-
-  googletag.defineSlot = function() {
+  googletag.defineSlot = googletag.defineSlot || function() {
+    return { addService() { return this; }, display() {}, setTargeting() {}, setCategoryExclusion() {} };
+  };
+  googletag.defineOutOfPageSlot = googletag.defineOutOfPageSlot || function() {
+    return { addService() { return this; }, display() {} };
+  };
+  googletag.pubads = googletag.pubads || function() {
     return {
-      addService: function(){ return this; },
-      display: function(){},
-      setTargeting: function(){},
-      setCategoryExclusion: function(){},
+      enableSingleRequest() {}, disableInitialLoad() {}, collapseEmptyDivs() {},
+      addEventListener() {}, setTargeting() {}, refresh() {}, enableSyncRendering() {}
     };
   };
-
-  googletag.defineOutOfPageSlot = function() {
-    return {
-      addService: function(){ return this; },
-      display: function(){},
-    };
-  };
-
-  googletag.pubads = function() {
-    return {
-      enableSingleRequest: function(){},
-      disableInitialLoad: function(){},
-      collapseEmptyDivs: function(){},
-      addEventListener: function(){},
-      setTargeting: function(){},
-      refresh: function(){},
-      enableSyncRendering: function(){},
-    };
-  };
-
-  googletag.enableServices = function(){};
+  googletag.enableServices = googletag.enableServices || function() {};
 </script>
+
 </head>
 <body>
 
-<div id="game-container">
-  <!-- Your game or app will render here -->
-</div>
+<!-- The canvas where the game will render -->
+<canvas id="gameCanvas"></canvas>
 
+<!-- Main Eaglercraft loader script -->
 <script src="https://eaglercraft.com/js/loader.js"></script>
 
 <script>
-  // After page load, also remove/hide dynamic ad iframes or containers
+  // After load, clean up any ad elements if still present
   window.addEventListener('load', () => {
-    const adIds = [
+    const adContainers = [
       'eaglercraft_com_leaderboard_responsive_top',
       'eaglercraft_com_sticky_anchorad_responsive',
       'eaglercraft_com_side_rails_left',
       'eaglercraft_com_side_rails_right',
       'eaglercraft_com_sidebar_desktop_right'
     ];
-
-    adIds.forEach(id => {
+    adContainers.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
+      if(el) el.style.display = 'none';
     });
 
-    // Remove iframes that are known ad sources
-    document.querySelectorAll('iframe').forEach(iframe => {
-      if(iframe.src && iframe.src.includes('doubleclick.net')) {
-        iframe.remove();
-      }
+    // Remove ad iframes (e.g. doubleclick)
+    document.querySelectorAll('iframe').forEach(f => {
+      if(f.src && f.src.includes('doubleclick.net')) f.remove();
     });
   });
 </script>
