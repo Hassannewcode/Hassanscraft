@@ -1,14 +1,245 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wordle AI Terminal</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mini Voxel Game All-in-One</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden; height: 100%;
+    background: #313131;
+    font-family: Arial, sans-serif;
+    user-select: none;
+  }
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  #hotbar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(0,0,0,0.5);
+    padding: 8px 12px;
+    border-radius: 12px;
+  }
+  .block {
+    padding: 6px 12px;
+    background: #666;
+    color: white;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+  }
+  .block.selected {
+    background: #ffd700;
+    color: black;
+    font-weight: bold;
+  }
+</style>
 </head>
 <body>
-  <div id="terminal"></div>
-  <input type="text" id="input" autofocus placeholder="Press Enter after feedback (e.g. GYBBG)" />
-  <button id="resetBtn">Reset</button>
-  <script src="script.js"></script>
+  <canvas id="gameCanvas"></canvas>
+  <div id="hotbar">
+    <div class="block selected" data-block="1">Grass</div>
+    <div class="block" data-block="2">Dirt</div>
+    <div class="block" data-block="3">Stone</div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(8, 10, 8);
+
+  // Controls state
+  let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+  let canJump = false;
+  const velocity = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+
+  // Pointer lock for mouse look
+  document.body.addEventListener('click', () => {
+    document.body.requestPointerLock();
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    if(document.pointerLockElement === document.body){
+      document.addEventListener('mousemove', onMouseMove, false);
+    } else {
+      document.removeEventListener('mousemove', onMouseMove, false);
+    }
+  }, false);
+
+  function onMouseMove(e) {
+    camera.rotation.y -= e.movementX * 0.002;
+    camera.rotation.x -= e.movementY * 0.002;
+    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+  }
+
+  // World constants
+  const CHUNK_SIZE = 16;
+  const BLOCK_SIZE = 1;
+
+  // Block types
+  const BLOCK_TYPES = {
+    0: null, // air
+    1: 'grass',
+    2: 'dirt',
+    3: 'stone',
+  };
+
+  // Selected block default
+  let selectedBlock = 1;
+
+  // Load texture atlas (replace URL with your own Minosoft texture atlas if you want)
+  const textureLoader = new THREE.TextureLoader();
+  const textureAtlas = textureLoader.load('https://i.imgur.com/l3OYZQX.png');
+  textureAtlas.magFilter = THREE.NearestFilter;
+  textureAtlas.minFilter = THREE.NearestFilter;
+
+  const atlasBlockSize = 1 / 16;
+
+  // UV mapping for blocks (simple linear row of blocks)
+  function getUVForBlock(id) {
+    let x = (id - 1) * atlasBlockSize;
+    return [
+      new THREE.Vector2(x, 1 - atlasBlockSize),
+      new THREE.Vector2(x + atlasBlockSize, 1 - atlasBlockSize),
+      new THREE.Vector2(x + atlasBlockSize, 1),
+      new THREE.Vector2(x, 1),
+    ];
+  }
+
+  function createBlockMesh(blockId, x, y, z) {
+    if(blockId === 0) return null;
+
+    const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+    const uv = getUVForBlock(blockId);
+
+    // Apply UV to each face
+    const uvAttr = geometry.attributes.uv;
+    for(let i = 0; i < uvAttr.count; i += 4){
+      uvAttr.setXY(i+0, uv[0].x, uv[0].y);
+      uvAttr.setXY(i+1, uv[1].x, uv[1].y);
+      uvAttr.setXY(i+2, uv[2].x, uv[2].y);
+      uvAttr.setXY(i+3, uv[3].x, uv[3].y);
+    }
+    uvAttr.needsUpdate = true;
+
+    const material = new THREE.MeshBasicMaterial({map: textureAtlas});
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+    return mesh;
+  }
+
+  // Generate flat terrain
+  for(let x=0; x<CHUNK_SIZE; x++){
+    for(let z=0; z<CHUNK_SIZE; z++){
+      for(let y=0; y<8; y++){
+        let blockId = 0;
+        if(y === 0) blockId = 1;       // grass
+        else if(y < 4) blockId = 2;   // dirt
+        else if(y < 8) blockId = 3;   // stone
+        if(blockId > 0){
+          const blockMesh = createBlockMesh(blockId, x, y, z);
+          scene.add(blockMesh);
+        }
+      }
+    }
+  }
+
+  // Movement event handlers
+  document.addEventListener('keydown', e => {
+    switch(e.code){
+      case 'KeyW': moveForward = true; break;
+      case 'KeyS': moveBackward = true; break;
+      case 'KeyA': moveLeft = true; break;
+      case 'KeyD': moveRight = true; break;
+      case 'Space':
+        if(canJump) velocity.y += 8;
+        canJump = false;
+        break;
+    }
+  });
+
+  document.addEventListener('keyup', e => {
+    switch(e.code){
+      case 'KeyW': moveForward = false; break;
+      case 'KeyS': moveBackward = false; break;
+      case 'KeyA': moveLeft = false; break;
+      case 'KeyD': moveRight = false; break;
+    }
+  });
+
+  // Hotbar block selection
+  document.getElementById('hotbar').addEventListener('click', e => {
+    if(e.target.classList.contains('block')){
+      document.querySelectorAll('.block').forEach(b => b.classList.remove('selected'));
+      e.target.classList.add('selected');
+      selectedBlock = Number(e.target.dataset.block);
+    }
+  });
+
+  // Animate loop
+  const clock = new THREE.Clock();
+
+  function animate(){
+    requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+
+    // Gravity & friction
+    velocity.y -= 9.8 * delta;
+    velocity.x -= velocity.x * 10 * delta;
+    velocity.z -= velocity.z * 10 * delta;
+
+    // Movement input
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize();
+
+    if(moveForward || moveBackward) velocity.z -= direction.z * 20 * delta;
+    if(moveLeft || moveRight) velocity.x -= direction.x * 20 * delta;
+
+    camera.position.x += velocity.x * delta;
+    camera.position.y += velocity.y * delta;
+    camera.position.z += velocity.z * delta;
+
+    if(camera.position.y < 2){
+      velocity.y = 0;
+      camera.position.y = 2;
+      canJump = true;
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  // Handle window resizing
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+})();
+</script>
 </body>
 </html>
